@@ -71,6 +71,28 @@ public class SimpleAuthoritiesMapperTests {
 	}
 
 	@Test
+	public void caseIsConvertedIndependentlyOfDefaultLocale() {
+		Locale defaultLocale = Locale.getDefault();
+		try {
+			Locale.setDefault(new Locale("tr", "TR"));
+			SimpleAuthorityMapper mapper = new SimpleAuthorityMapper();
+			mapper.setConvertToUpperCase(true);
+			Set<String> mapped = AuthorityUtils.authorityListToSet(mapper
+					.mapAuthorities(AuthorityUtils.createAuthorityList("admin")));
+			assertThat(mapped).containsOnly("ROLE_ADMIN");
+
+			mapper.setConvertToUpperCase(false);
+			mapper.setConvertToLowerCase(true);
+			mapped = AuthorityUtils.authorityListToSet(mapper
+					.mapAuthorities(AuthorityUtils.createAuthorityList("ADMIN")));
+			assertThat(mapped).containsOnly("ROLE_admin");
+		}
+		finally {
+			Locale.setDefault(defaultLocale);
+		}
+	}
+
+	@Test
 	public void duplicatesAreRemoved() {
 		SimpleAuthorityMapper mapper = new SimpleAuthorityMapper();
 		mapper.setConvertToUpperCase(true);

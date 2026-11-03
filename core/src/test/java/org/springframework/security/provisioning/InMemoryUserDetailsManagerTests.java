@@ -16,10 +16,14 @@
 
 package org.springframework.security.provisioning;
 
+import java.util.Locale;
+import java.util.Properties;
+
 import org.junit.Test;
 import org.springframework.security.core.userdetails.PasswordEncodedUser;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -48,5 +52,43 @@ public class InMemoryUserDetailsManagerTests {
 		String newPassword = "newPassword";
 		this.manager.updatePassword(userNotLowerCase, newPassword);
 		assertThat(this.manager.loadUserByUsername(userNotLowerCase.getUsername()).getPassword()).isEqualTo(newPassword);
+	}
+
+	@Test
+	public void loadUserByUsernameWhenDefaultLocaleIsTurkishThenUsernameKeyIsLocaleIndependent() {
+		Locale defaultLocale = Locale.getDefault();
+		try {
+			Locale.setDefault(new Locale("tr", "TR"));
+			UserDetails admin = User.withUserDetails(PasswordEncodedUser.admin())
+					.username("ADMIN")
+					.build();
+			InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager(admin);
+			assertThat(manager.userExists("admin")).isTrue();
+			assertThat(manager.loadUserByUsername("admin").getUsername()).isEqualTo("ADMIN");
+			// a different username (dotless i) must not resolve to the ADMIN account
+			assertThat(manager.userExists("admın")).isFalse();
+			assertThatThrownBy(() -> manager.loadUserByUsername("admın"))
+					.isInstanceOf(UsernameNotFoundException.class);
+		}
+		finally {
+			Locale.setDefault(defaultLocale);
+		}
+	}
+
+	@Test
+	public void constructorWhenPropertiesDisabledAndDefaultLocaleIsTurkishThenUserIsDisabled() {
+		Locale defaultLocale = Locale.getDefault();
+		try {
+			Locale.setDefault(new Locale("tr", "TR"));
+			Properties properties = new Properties();
+			properties.setProperty("bob", "password,DISABLED,ROLE_USER");
+			InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager(properties);
+			UserDetails bob = manager.loadUserByUsername("bob");
+			assertThat(bob.isEnabled()).isFalse();
+			assertThat(bob.getAuthorities()).extracting("authority").containsOnly("ROLE_USER");
+		}
+		finally {
+			Locale.setDefault(defaultLocale);
+		}
 	}
 }

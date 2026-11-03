@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Locale;
 
 import org.junit.Test;
 
@@ -54,6 +55,25 @@ public class MapReactiveUserDetailsServiceTests {
 	@Test
 	public void findByUsernameWhenDifferentCaseThenReturns() {
 		assertThat((users.findByUsername("uSeR").block())).isEqualTo(USER_DETAILS);
+	}
+
+	@Test
+	public void findByUsernameWhenDefaultLocaleIsTurkishThenUsernameKeyIsLocaleIndependent() {
+		Locale defaultLocale = Locale.getDefault();
+		try {
+			Locale.setDefault(new Locale("tr", "TR"));
+			UserDetails admin = User.withUsername("ADMIN")
+					.password("password")
+					.roles("ADMIN")
+					.build();
+			MapReactiveUserDetailsService service = new MapReactiveUserDetailsService(admin);
+			assertThat(service.findByUsername("admin").block()).isEqualTo(admin);
+			// a different username (dotless i) must not resolve to the ADMIN account
+			assertThat(service.findByUsername("admın").block()).isNull();
+		}
+		finally {
+			Locale.setDefault(defaultLocale);
+		}
 	}
 
 	@Test
